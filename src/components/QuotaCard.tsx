@@ -1,26 +1,20 @@
-import { ArrowClockwise, ArrowDown, ArrowUp, ArrowsInSimple, ArrowsOutSimple, ClockCounterClockwise, CloudSlash, Info, PushPin, PushPinSlash, SignIn, WarningCircle } from "@phosphor-icons/react";
-import { memo, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { clampPercent, formatDateTime, formatResetDate, formatResetTime, quotaTier } from "../lib/format";
+import { ArrowClockwise, ClockCounterClockwise, CloudSlash, SignIn, WarningCircle } from "@phosphor-icons/react";
+import { memo, type ReactNode, useState } from "react";
+import { clampPercent, formatResetTime, quotaTier } from "../lib/format";
 import { copy, normalizeLanguage } from "../lib/i18n";
 import type { Language, ProviderSnapshot, WidgetPreferences } from "../types";
-import { ProviderMark } from "./ProviderMark";
 
 interface Props {
   snapshot: ProviderSnapshot;
   preferences: WidgetPreferences;
-  providerCount: number;
-  onPrevious: () => void;
-  onNext: () => void;
-  onTogglePin: () => void;
-  onLock: () => void;
-  onToggleStayExpanded: () => void;
   onDrag: () => void;
   onHover: (hovered: boolean) => void;
   onRefresh?: () => void;
   isConsuming?: boolean;
   notice?: ReactNode;
-  initialShowCreditTip?: boolean;
 }
+
+type QuotaWindow = "short" | "weekly";
 
 function StatusIcon({ status, expired = false }: { status: ProviderSnapshot["status"]; expired?: boolean }) {
   if (status === "signed_out") return <SignIn weight="duotone" />;
@@ -30,8 +24,7 @@ function StatusIcon({ status, expired = false }: { status: ProviderSnapshot["sta
 }
 
 function localizedBackendMessage(message: string | null, language: Language): string | null {
-  if (!message) return null;
-  if (language === "en") return message;
+  if (!message || language === "en") return message;
   const normalized = message.toLowerCase();
   if (normalized.includes("sign in") || normalized.includes("login")) return "Codex 登录已失效，请重新登录。";
   if (normalized.includes("rate limited")) return "请求过于频繁，将稍后自动重试。";
@@ -45,31 +38,26 @@ function localizedBackendMessage(message: string | null, language: Language): st
 export const QuotaCard = memo(function QuotaCard({
   snapshot,
   preferences,
-  providerCount,
-  onPrevious,
-  onNext,
-  onTogglePin: _onTogglePin,
-  onLock,
-  onToggleStayExpanded,
   onDrag,
   onHover,
   onRefresh,
   isConsuming = false,
   notice = null,
-  initialShowCreditTip = false,
 }: Props) {
-  const [showCreditTip, setShowCreditTip] = useState(initialShowCreditTip);
+  const [selectedKind, setSelectedKind] = useState<QuotaWindow>(() => snapshot.shortWindow ? "short" : "weekly");
+  const [hovered, setHovered] = useState(false);
   const language = normalizeLanguage(preferences.language);
   const t = copy[language];
-  const primary = snapshot.shortWindow ? clampPercent(snapshot.shortWindow.remainingPercent) : null;
-  const weekly = snapshot.weeklyWindow ? clampPercent(snapshot.weeklyWindow.remainingPercent) : null;
-  const displayPercent = primary ?? weekly;
-  const displayWindow = snapshot.shortWindow ?? snapshot.weeklyWindow;
-  const displayingWeeklyAsPrimary = primary === null && weekly !== null;
+  const selectedWindow = selectedKind === "short" ? snapshot.shortWindow : snapshot.weeklyWindow;
+  const activeKind: QuotaWindow = selectedWindow ? selectedKind : snapshot.shortWindow ? "short" : "weekly";
+  const displayWindow = activeKind === "short" ? snapshot.shortWindow : snapshot.weeklyWindow;
+  const displayPercent = displayWindow ? clampPercent(displayWindow.remainingPercent) : null;
   const staleAge = Date.now() - new Date(snapshot.updatedAt).getTime();
   const staleExpired = snapshot.status === "stale" && staleAge > 30 * 60_000;
-  const available = snapshot.status === "ok" || (snapshot.status === "stale" && !staleExpired);
+  const available = (snapshot.status === "ok" || (snapshot.status === "stale" && !staleExpired)) && displayPercent !== null;
   const tier = quotaTier(displayPercent);
+  const quotaAriaLabel = activeKind === "weekly" ? t.weeklyAvailableLabel(displayPercent ?? 0) : t.availableLabel(displayPercent ?? 0);
+  const expanded = preferences.stayExpanded || hovered;
   const indicatorState = isConsuming ? "active" : snapshot.status === "ok" ? "ok" : snapshot.status === "stale" ? "stale" : "error";
   const indicatorLabel = isConsuming
     ? t.active
@@ -81,137 +69,73 @@ export const QuotaCard = memo(function QuotaCard({
           ? t.notSignedIn
           : t.unavailableStatus;
   const message = localizedBackendMessage(snapshot.message, language);
-  const creditExpirations = useMemo(() => (snapshot.resetCreditExpiresAt ?? []).map((value, index) => {
-    return t.creditItem(index, formatDateTime(value, language));
-  }), [language, snapshot.resetCreditExpiresAt, t]);
+  const resetLabel = formatResetTime(displayWindow?.resetsAt ?? null, new Date(), language);
+  const canSwitchWindow = Boolean(snapshot.shortWindow && snapshot.weeklyWindow);
 
-  return (
-    <main
-      className={`quota-card quota-card--${snapshot.status} quota-card--${tier}`}
-      onMouseEnter={() => onHover(true)}
-      onMouseLeave={() => onHover(false)}
-      onMouseDown={(event) => { if (event.button === 0) void onDrag(); }}
-    >
-      <div className="aurora" aria-hidden="true" />
-      <span className="sr-only" aria-live="polite">{available && displayPercent !== null ? (displayingWeeklyAsPrimary ? t.weeklyAvailableLabel(displayPercent) : t.availableLabel(displayPercent)) : message}</span>
-      {notice ? <div className="operation-notice" role="status">{notice}</div> : null}
-      <header className="card-header">
-        <div>
-          <p className="eyebrow">{snapshot.displayName} · {snapshot.plan ?? t.accountFallback}</p>
-          {snapshot.status !== "stale" ? <p className="updated">{displayingWeeklyAsPrimary ? t.weeklyShortRemaining : t.shortRemaining}</p> : null}
-        </div>
-        {!preferences.locked ? (
-          <nav className="card-actions" aria-label={t.controls} onMouseDown={(event) => event.stopPropagation()}>
-            {providerCount > 1 ? <button onClick={onPrevious} aria-label={t.servicePrevious}><ArrowUp /></button> : null}
-            {providerCount > 1 ? <button onClick={onNext} aria-label={t.serviceNext}><ArrowDown /></button> : null}
-            <span className={`usage-indicator usage-indicator--${indicatorState}`} role="status" aria-label={indicatorLabel} title={indicatorLabel}><i /></span>
-            <button className={preferences.stayExpanded ? "expand-button expand-button--active" : "expand-button"} onClick={onToggleStayExpanded} aria-pressed={preferences.stayExpanded} aria-label={preferences.stayExpanded ? t.keepExpandedOff : t.keepExpandedOn} title={preferences.stayExpanded ? t.keepExpandedOff : t.keepExpandedOn}>
-              {preferences.stayExpanded ? <ArrowsInSimple weight="bold" /> : <ArrowsOutSimple />}
-            </button>
-            <button className={preferences.alwaysOnTop ? "pin-button pin-button--active" : "pin-button"} onClick={onLock} aria-pressed={preferences.alwaysOnTop} aria-label={preferences.alwaysOnTop ? t.pinOff : t.pinOn} title={preferences.alwaysOnTop ? t.pinOff : t.pinOn}>
-              {preferences.alwaysOnTop ? <PushPin weight="fill" /> : <PushPinSlash />}
-            </button>
-          </nav>
-        ) : null}
-      </header>
-
-      {available && displayPercent !== null ? (
-        <>
-          <section className="primary-metric" aria-label={displayingWeeklyAsPrimary ? t.weeklyAvailableLabel(displayPercent) : t.availableLabel(displayPercent)}>
-            <span>{displayPercent}</span><small>%</small>
-          </section>
-          <div className="progress" role="progressbar" aria-label={displayingWeeklyAsPrimary ? t.weeklyAvailableLabel(displayPercent) : t.availableLabel(displayPercent)} aria-valuemin={0} aria-valuemax={100} aria-valuenow={displayPercent}>
-            <span style={{ width: `${displayPercent}%` }} />
-          </div>
-          <p className="reset-time">{formatResetTime(displayWindow?.resetsAt ?? null, new Date(), language)}{displayWindow?.resetsAt ? ` · ${formatDateTime(displayWindow.resetsAt, language)}` : ""}</p>
-          <footer className="card-footer">
-            <div className="weekly-metric">
-              {displayingWeeklyAsPrimary ? <p className="weekly-note"><Info weight="bold" aria-hidden="true" />{t.shortWindowUnavailable}</p> : <p>{t.weeklyUntil(formatResetDate(snapshot.weeklyWindow?.resetsAt ?? null, language))}</p>}
-              <strong className={displayingWeeklyAsPrimary ? "weekly-value--unavailable" : undefined}>{displayingWeeklyAsPrimary ? "--" : weekly ?? "--"}<small>{displayingWeeklyAsPrimary || weekly === null ? "" : "%"}</small></strong>
-              <div className="reset-credit-row" onMouseDown={(event) => event.stopPropagation()}>
-                <span>{snapshot.resetCredits === null ? t.resetCreditUnknown : t.resetCredits(snapshot.resetCredits)}</span>
-                {snapshot.resetCredits !== null && snapshot.resetCredits > 0 ? (
-                  <button type="button" className="reset-credit-button" onClick={() => setShowCreditTip((value) => !value)} aria-expanded={showCreditTip} aria-label={t.view}>{t.view}</button>
-                ) : null}
-              </div>
-              {showCreditTip ? (
-                <div className="reset-credit-tip" role="status" onMouseDown={(event) => event.stopPropagation()}>
-                  {creditExpirations.length > 0 ? creditExpirations.map((item) => <p key={item}>{item}</p>) : <p>{t.noCreditExpiration}</p>}
-                </div>
-              ) : null}
-            </div>
-            <ProviderMark />
-          </footer>
-        </>
-      ) : (
-        <section className="error-state" aria-live="polite">
-          <div className="status-icon" aria-hidden="true"><StatusIcon status={snapshot.status} expired={staleExpired} /></div>
-          <strong>{snapshot.status === "signed_out" ? t.signedInRequired : staleExpired ? t.staleExpired : t.temporarilyUnavailable}</strong>
-          <p>{message ?? t.errorUnavailable}</p>
-          {snapshot.status === "stale" ? (
-            <button type="button" className="error-refresh-button" onMouseDown={(event) => event.stopPropagation()} onClick={onRefresh} disabled={!onRefresh} aria-label={t.refreshQuota}>
-              <ArrowClockwise />
-              <span>{t.refresh}</span>
-            </button>
-          ) : null}
-        </section>
-      )}
-    </main>
-  );
-});
-
-export const QuotaOrb = memo(function QuotaOrb({ snapshot, onDrag, onHover, language = "zh-CN" }: Pick<Props, "snapshot" | "onDrag" | "onHover"> & { language?: Language }) {
-  const [idle, setIdle] = useState(false);
-  const idleTimer = useRef<number | null>(null);
-  const activeLanguage = normalizeLanguage(language);
-  const t = copy[activeLanguage];
-  const primary = snapshot.shortWindow ? clampPercent(snapshot.shortWindow.remainingPercent) : null;
-  const weekly = snapshot.weeklyWindow ? clampPercent(snapshot.weeklyWindow.remainingPercent) : null;
-  const displayPercent = primary ?? weekly;
-  const displayingWeeklyAsPrimary = primary === null && weekly !== null;
-  const tier = quotaTier(displayPercent);
-  const available = snapshot.status === "ok" && displayPercent !== null;
-
-  useEffect(() => {
-    idleTimer.current = window.setTimeout(() => setIdle(true), 2000);
-    return () => {
-      if (idleTimer.current !== null) window.clearTimeout(idleTimer.current);
-    };
-  }, []);
-
-  const handleMouseEnter = () => {
-    if (idleTimer.current !== null) window.clearTimeout(idleTimer.current);
-    setIdle(false);
-    onHover(true);
+  const handleHover = (value: boolean) => {
+    setHovered(value);
+    onHover(value);
   };
 
   return (
     <main
-      className={`quota-orb quota-card--${snapshot.status} quota-card--${tier}${displayingWeeklyAsPrimary ? " quota-orb--weekly" : ""}${idle ? " quota-orb--idle" : ""}`}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={() => onHover(false)}
-      onMouseDown={(event) => { if (event.button === 0) void onDrag(); }}
-      aria-label={available ? (displayingWeeklyAsPrimary ? t.weeklyAvailableLabel(displayPercent!) : t.availableLabel(displayPercent!)) : localizedBackendMessage(snapshot.message, activeLanguage) ?? t.unavailableStatus}
+      className={`quota-card quota-card--${snapshot.status} quota-card--${tier}${activeKind === "weekly" ? " quota-card--weekly" : ""}${expanded ? " quota-card--expanded" : ""}`}
+      onMouseEnter={() => handleHover(true)}
+      onMouseLeave={() => handleHover(false)}
+      onMouseDown={(event) => {
+        if (event.button === 0 && !(event.target as Element).closest("button")) void onDrag();
+      }}
     >
-      <div className="aurora" aria-hidden="true" />
-      {available && displayingWeeklyAsPrimary ? (
-        <span className="orb-weekly-badge" aria-hidden="true">
-          <svg viewBox="0 0 55 17" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M7.3687 52.2894C13.0674 47.8486 17 38.4172 17 27.5C17 16.5828 13.0674 7.15141 7.3687 2.71063C3.88364 -0.00516105 0 3.58172 0 8L0 47C0 51.4183 3.88364 55.0052 7.3687 52.2894Z" fill="#61A1E2" fillOpacity=".8" transform="matrix(0 1 -1 0 55 0)" />
-          </svg>
-          <b>W</b>
-        </span>
-      ) : null}
-      {available ? (
-        <section className="orb-metric">
-          <span>{displayPercent}</span>
-          <small>%</small>
-        </section>
-      ) : (
-        <section className="orb-unavailable">
-          <StatusIcon status={snapshot.status} />
-        </section>
-      )}
+      <div className="obsidian-shell">
+        <span className="sr-only" aria-live="polite">{available ? quotaAriaLabel : message}</span>
+        {notice ? <div className="operation-notice" role="status">{notice}</div> : null}
+
+        {available ? (
+          <section className="quota-content">
+            <div className="quota-value" role="progressbar" aria-label={quotaAriaLabel} aria-valuemin={0} aria-valuemax={100} aria-valuenow={displayPercent ?? undefined}>
+              <span className="quota-value-ghost" aria-hidden="true">{displayPercent}</span>
+              <strong>{displayPercent}</strong>
+              <small>%</small>
+              <i className="quota-value-slice quota-value-slice--mint" aria-hidden="true" />
+              <i className="quota-value-slice quota-value-slice--violet" aria-hidden="true" />
+            </div>
+
+            <div className="quota-details" aria-hidden={!expanded}>
+              <div className="quota-details-top">
+                <span className="quota-plan">{snapshot.plan ?? t.accountFallback}</span>
+                {canSwitchWindow ? (
+                  <div className="quota-switch">
+                    <button type="button" onClick={() => setSelectedKind("weekly")} aria-pressed={activeKind === "weekly"} aria-label={t.showWeeklyQuota}>
+                      {t.weeklyControl}
+                    </button>
+                    <button type="button" onClick={() => setSelectedKind("short")} aria-pressed={activeKind === "short"} aria-label={t.showShortQuota}>
+                      {t.shortControl}
+                    </button>
+                  </div>
+                ) : <span className="quota-window-label">{activeKind === "weekly" ? t.weeklyControl : t.shortControl}</span>}
+              </div>
+              <p className="quota-reset">
+                <span className={`usage-indicator usage-indicator--${indicatorState}`} aria-hidden="true"><i /></span>
+                {resetLabel}
+                <span className="sr-only"> · {indicatorLabel}</span>
+              </p>
+            </div>
+          </section>
+        ) : (
+          <section className="quota-error" aria-live="polite">
+            <div className="status-icon" aria-hidden="true"><StatusIcon status={snapshot.status} expired={staleExpired} /></div>
+            <div className="quota-error-copy">
+              <strong>{snapshot.status === "signed_out" ? t.signedInRequired : staleExpired ? t.staleExpired : t.temporarilyUnavailable}</strong>
+              <p>{message ?? t.errorUnavailable}</p>
+            </div>
+            {snapshot.status === "stale" ? (
+              <button type="button" className="error-refresh-button" onMouseDown={(event) => event.stopPropagation()} onClick={onRefresh} disabled={!onRefresh} aria-label={t.refreshQuota}>
+                <ArrowClockwise />
+              </button>
+            ) : null}
+          </section>
+        )}
+      </div>
     </main>
   );
 });

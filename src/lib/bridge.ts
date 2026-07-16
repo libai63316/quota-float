@@ -60,8 +60,7 @@ export async function startDragging(): Promise<void> {
   const { getCurrentWindow } = await import("@tauri-apps/api/window");
   const { invoke } = await import("@tauri-apps/api/core");
   const currentWindow = getCurrentWindow();
-  await invoke("begin_widget_drag");
-  await currentWindow.startDragging();
+  await Promise.all([invoke("begin_widget_drag"), currentWindow.startDragging()]);
   let previous = await currentWindow.outerPosition();
   let stableTicks = 0;
   let attempts = 0;

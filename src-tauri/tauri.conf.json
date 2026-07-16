@@ -15,12 +15,12 @@
       {
         "label": "widget",
         "title": "Quota Float",
-        "width": 88,
-        "height": 88,
-        "minWidth": 88,
-        "minHeight": 88,
-        "maxWidth": 328,
-        "maxHeight": 328,
+        "width": 120,
+        "height": 52,
+        "minWidth": 120,
+        "minHeight": 52,
+        "maxWidth": 232,
+        "maxHeight": 80,
         "resizable": false,
         "decorations": false,
         "transparent": true,
@@ -35,12 +35,15 @@
   },
   "bundle": {
     "active": true,
-    "createUpdaterArtifacts": true,
+    "createUpdaterArtifacts": false,
     "targets": "all",
     "category": "Utility",
     "shortDescription": "Codex quota at a glance",
     "longDescription": "A lightweight floating desktop card for Codex usage limits.",
     "copyright": "Copyright Quota Float contributors",
+    "resources": {
+      "target/release/WebView2Loader.dll": ""
+    },
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
   },
   "plugins": {

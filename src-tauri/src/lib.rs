@@ -21,8 +21,10 @@ use tauri::{
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_window_state::Builder as WindowStateBuilder;
 
-const COLLAPSED_LOGICAL_SIZE: f64 = 80.0;
-const EXPANDED_LOGICAL_SIZE: f64 = 320.0;
+const COLLAPSED_LOGICAL_WIDTH: f64 = 112.0;
+const COLLAPSED_LOGICAL_HEIGHT: f64 = 44.0;
+const EXPANDED_LOGICAL_WIDTH: f64 = 224.0;
+const EXPANDED_LOGICAL_HEIGHT: f64 = 72.0;
 const EDGE_SAFE_INSET_LOGICAL: f64 = 4.0;
 const SNAP_THRESHOLD_LOGICAL: f64 = 24.0;
 const POSITION_EPSILON: u32 = 2;
@@ -506,12 +508,12 @@ fn expand_widget(
     let (monitor, scale_factor) = monitor_and_scale(&window)?;
     let safe_inset = logical_to_physical(EDGE_SAFE_INSET_LOGICAL, scale_factor);
     let collapsed_size = PhysicalSize::new(
-        widget_window_size(COLLAPSED_LOGICAL_SIZE, scale_factor, safe_inset),
-        widget_window_size(COLLAPSED_LOGICAL_SIZE, scale_factor, safe_inset),
+        widget_window_size(COLLAPSED_LOGICAL_WIDTH, scale_factor, safe_inset),
+        widget_window_size(COLLAPSED_LOGICAL_HEIGHT, scale_factor, safe_inset),
     );
     let expanded_size = PhysicalSize::new(
-        widget_window_size(EXPANDED_LOGICAL_SIZE, scale_factor, safe_inset),
-        widget_window_size(EXPANDED_LOGICAL_SIZE, scale_factor, safe_inset),
+        widget_window_size(EXPANDED_LOGICAL_WIDTH, scale_factor, safe_inset),
+        widget_window_size(EXPANDED_LOGICAL_HEIGHT, scale_factor, safe_inset),
     );
     let Some(monitor) = monitor else {
         window
@@ -572,15 +574,17 @@ mod geometry_tests {
 
     #[test]
     fn window_size_includes_the_transparent_safe_inset() {
-        assert_eq!(window_size_for_visual_size(80, 4), 88);
-        assert_eq!(widget_window_size(320.0, 1.5, 6), 492);
+        assert_eq!(widget_window_size(COLLAPSED_LOGICAL_WIDTH, 1.0, 4), 120);
+        assert_eq!(widget_window_size(COLLAPSED_LOGICAL_HEIGHT, 1.0, 4), 52);
+        assert_eq!(widget_window_size(EXPANDED_LOGICAL_WIDTH, 1.5, 6), 348);
+        assert_eq!(widget_window_size(EXPANDED_LOGICAL_HEIGHT, 1.5, 6), 120);
     }
 
     #[test]
     fn expansion_stays_above_a_bottom_taskbar() {
         let position = expanded_position_in_bounds(
             rect(1812, 952, 88),
-            PhysicalSize::new(328, 328),
+            PhysicalSize::new(328, 104),
             DockState {
                 horizontal: Some(HorizontalDock::Right),
                 vertical: Some(VerticalDock::Bottom),
@@ -589,14 +593,14 @@ mod geometry_tests {
             PhysicalSize::new(1920, 1040),
             4,
         );
-        assert_eq!(position, PhysicalPosition::new(1572, 712));
+        assert_eq!(position, PhysicalPosition::new(1572, 936));
     }
 
     #[test]
     fn expansion_handles_negative_origin_work_areas() {
         let position = expanded_position_in_bounds(
             rect(-1284, -4, 88),
-            PhysicalSize::new(328, 328),
+            PhysicalSize::new(328, 104),
             DockState {
                 horizontal: Some(HorizontalDock::Left),
                 vertical: Some(VerticalDock::Top),
@@ -612,13 +616,13 @@ mod geometry_tests {
     fn undocked_expansion_flips_inward_near_work_area_edges() {
         let position = expanded_position_in_bounds(
             rect(1750, 900, 88),
-            PhysicalSize::new(328, 328),
+            PhysicalSize::new(328, 104),
             DockState::default(),
             PhysicalPosition::new(0, 0),
             PhysicalSize::new(1920, 1040),
             4,
         );
-        assert_eq!(position, PhysicalPosition::new(1510, 660));
+        assert_eq!(position, PhysicalPosition::new(1510, 900));
     }
 }
 
@@ -631,8 +635,8 @@ fn collapse_widget(app: AppHandle, state: State<'_, AppState>) -> Result<(), Str
     let (monitor, scale_factor) = monitor_and_scale(&window)?;
     let safe_inset = logical_to_physical(EDGE_SAFE_INSET_LOGICAL, scale_factor);
     let collapsed_size = PhysicalSize::new(
-        widget_window_size(COLLAPSED_LOGICAL_SIZE, scale_factor, safe_inset),
-        widget_window_size(COLLAPSED_LOGICAL_SIZE, scale_factor, safe_inset),
+        widget_window_size(COLLAPSED_LOGICAL_WIDTH, scale_factor, safe_inset),
+        widget_window_size(COLLAPSED_LOGICAL_HEIGHT, scale_factor, safe_inset),
     );
     let Some(monitor) = monitor else {
         window
@@ -694,8 +698,8 @@ fn begin_widget_drag(app: AppHandle, state: State<'_, AppState>) -> Result<(), S
     let (_, scale_factor) = monitor_and_scale(&window)?;
     let safe_inset = logical_to_physical(EDGE_SAFE_INSET_LOGICAL, scale_factor);
     let collapsed_size = PhysicalSize::new(
-        widget_window_size(COLLAPSED_LOGICAL_SIZE, scale_factor, safe_inset),
-        widget_window_size(COLLAPSED_LOGICAL_SIZE, scale_factor, safe_inset),
+        widget_window_size(COLLAPSED_LOGICAL_WIDTH, scale_factor, safe_inset),
+        widget_window_size(COLLAPSED_LOGICAL_HEIGHT, scale_factor, safe_inset),
     );
     let mode = state
         .geometry
@@ -723,12 +727,12 @@ fn finish_widget_drag(app: AppHandle, state: State<'_, AppState>) -> Result<(), 
     let threshold = logical_to_physical(SNAP_THRESHOLD_LOGICAL, scale_factor) as i32;
     let safe_inset = logical_to_physical(EDGE_SAFE_INSET_LOGICAL, scale_factor);
     let collapsed_size = PhysicalSize::new(
-        widget_window_size(COLLAPSED_LOGICAL_SIZE, scale_factor, safe_inset),
-        widget_window_size(COLLAPSED_LOGICAL_SIZE, scale_factor, safe_inset),
+        widget_window_size(COLLAPSED_LOGICAL_WIDTH, scale_factor, safe_inset),
+        widget_window_size(COLLAPSED_LOGICAL_HEIGHT, scale_factor, safe_inset),
     );
     let expanded_size = PhysicalSize::new(
-        widget_window_size(EXPANDED_LOGICAL_SIZE, scale_factor, safe_inset),
-        widget_window_size(EXPANDED_LOGICAL_SIZE, scale_factor, safe_inset),
+        widget_window_size(EXPANDED_LOGICAL_WIDTH, scale_factor, safe_inset),
+        widget_window_size(EXPANDED_LOGICAL_HEIGHT, scale_factor, safe_inset),
     );
     let mode = state
         .drag_mode

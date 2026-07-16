@@ -2,6 +2,8 @@
 
 Lightweight floating desktop widget for checking Codex quota from the local Codex Desktop login state.
 
+This repository is a modified fork of [change-42-yhmm/quota-float](https://github.com/change-42-yhmm/quota-float), distributed under the MIT License. It is an independent community project and is not affiliated with or endorsed by OpenAI.
+
 ![Quota Float quota states](docs/images/quota-states.png)
 
 ## Highlights
