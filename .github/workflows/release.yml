@@ -15,9 +15,9 @@ jobs:
       matrix:
         include:
           - platform: windows-latest
-            args: ""
+            args: "--bundles nsis"
           - platform: macos-latest
-            args: "--target universal-apple-darwin"
+            args: "--target universal-apple-darwin --bundles dmg"
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -46,12 +46,9 @@ jobs:
           releaseBody: |
             ## What's new
 
-            - Keeps showing weekly quota when the 5-hour window is temporarily unavailable, with a clear `W` badge.
-            - Adds persistent expansion, clearer active controls, exact reset time, and localized tray actions.
-            - Adds automatic update checks and a safe GitHub Releases fallback link.
-            - Improves edge docking and transparent rounded-window rendering on Windows and macOS.
-
-            ![Quota Float weekly quota fallback](https://raw.githubusercontent.com/change-42-yhmm/quota-float/main/docs/images/quota-v0.1.4-weekly-fallback.png)
+            - Introduces the compact battery-capsule quota widget.
+            - Adds explicit weekly and 5-hour quota switching when both windows are available.
+            - Improves expansion, edge docking, reset-time display, and localized controls.
 
             ## Privacy
 

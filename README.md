@@ -54,17 +54,17 @@ Browser preview uses mock data. Real quota reading requires the Tauri desktop ap
 
 For normal users, download the latest installer from GitHub Releases:
 
-- Latest release: https://github.com/change-42-yhmm/quota-float/releases/latest
-- Windows: use the `.exe` or `.msi` installer.
+- Latest release: https://github.com/libai63316/quota-float/releases/latest
+- Windows: use the `.exe` installer.
 - macOS Universal: use the `.dmg` bundle.
 
-Updater artifacts are signed with the project's Tauri update key. Windows Authenticode signing and macOS notarization are separate platform-signing steps; builds without those certificates may still trigger SmartScreen or Gatekeeper warnings.
+These builds are not Authenticode-signed or Apple-notarized, so Windows SmartScreen or macOS Gatekeeper may show a warning.
 
 ## Feedback
 
 Please use GitHub Issues for bugs, compatibility reports, and feature requests:
 
-https://github.com/change-42-yhmm/quota-float/issues
+https://github.com/libai63316/quota-float/issues
 
 ## Privacy Boundary
 
