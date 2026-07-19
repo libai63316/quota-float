@@ -10,19 +10,18 @@ This repository is a modified fork of [change-42-yhmm/quota-float](https://githu
 
 - Shows your Codex plan, 5-hour quota, weekly quota, and next reset time in a compact always-on-top widget.
 - Uses clear quota states for healthy, caution, and critical remaining usage.
-- Collapses into a small floating orb when idle, then expands on hover.
+- Stays compact until you click it, then expands to show reset details and both quota windows.
 - Indicates whether quota is currently being consumed.
-- Includes persistent expansion, always-on-top controls, and localized tray actions.
+- Keeps click and drag distinct: click toggles details, while a deliberate drag moves the widget.
+- Includes always-on-top controls and localized tray actions.
 - Falls back to a clearly marked weekly-quota view when the 5-hour window is unavailable.
-- Checks for app updates automatically and supports signed in-app updates on Windows.
-- Shows reset credit count and available reset-credit expiration times when the quota service provides them.
 - Handles stale data, signed-out sessions, unavailable quota responses, and loading states without fabricating values.
 
 ## Screenshots
 
-| Quota states | Floating orb | Reset credit expiration |
+| Healthy | Caution | Critical |
 | --- | --- | --- |
-| ![Healthy, caution, and critical quota states](docs/images/quota-states.png) | ![Collapsed quota orb](docs/images/quota-orb.png) | ![Reset credit expiration popover](docs/images/quota-reset-expiration.png) |
+| 50–100% | 10–49% | 0–9% |
 
 ### Weekly quota fallback
 
@@ -49,6 +48,20 @@ codex, quota, tauri, react, rust, desktop-app, windows, macos, productivity
 Quota Float reads the existing Codex Desktop login state on your machine and queries Codex/ChatGPT quota endpoints with that session. It does not estimate usage from local token counts and does not redeem reset credits or modify account settings.
 
 Browser preview uses mock data. Real quota reading requires the Tauri desktop app and an existing Codex Desktop login on the same machine.
+
+## Preview without installing the desktop app
+
+The screenshot above is the current UI. For a zero-setup interactive preview, double-click `preview/quota-float-preview.html`. It is a self-contained file: no desktop installer, Node.js, dev server, or Codex login is required.
+
+For live development with hot reload, use the dedicated preview entry; it does not launch Tauri or read your Codex account:
+
+```powershell
+npm run preview:ui
+```
+
+Then open `http://localhost:1420/preview/`. Click the widget to expand or collapse it and use the state switcher to inspect healthy, caution, critical, weekly-only, stale, unavailable, and signed-out states.
+
+Regenerate the self-contained preview after UI changes with `npm run build:preview`.
 
 ## Download
 

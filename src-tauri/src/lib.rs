@@ -14,7 +14,7 @@ use models::{ProviderSnapshot, WidgetPreferences};
 use models::UsageWindow;
 use serde::Deserialize;
 use tauri::{
-    menu::{CheckMenuItem, Menu, MenuItem},
+    menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, State, WindowEvent,
 };
@@ -23,8 +23,8 @@ use tauri_plugin_window_state::Builder as WindowStateBuilder;
 
 const COLLAPSED_LOGICAL_WIDTH: f64 = 112.0;
 const COLLAPSED_LOGICAL_HEIGHT: f64 = 44.0;
-const EXPANDED_LOGICAL_WIDTH: f64 = 224.0;
-const EXPANDED_LOGICAL_HEIGHT: f64 = 72.0;
+const EXPANDED_LOGICAL_WIDTH: f64 = 328.0;
+const EXPANDED_LOGICAL_HEIGHT: f64 = 136.0;
 const EDGE_SAFE_INSET_LOGICAL: f64 = 4.0;
 const SNAP_THRESHOLD_LOGICAL: f64 = 24.0;
 const POSITION_EPSILON: u32 = 2;
@@ -576,8 +576,8 @@ mod geometry_tests {
     fn window_size_includes_the_transparent_safe_inset() {
         assert_eq!(widget_window_size(COLLAPSED_LOGICAL_WIDTH, 1.0, 4), 120);
         assert_eq!(widget_window_size(COLLAPSED_LOGICAL_HEIGHT, 1.0, 4), 52);
-        assert_eq!(widget_window_size(EXPANDED_LOGICAL_WIDTH, 1.5, 6), 348);
-        assert_eq!(widget_window_size(EXPANDED_LOGICAL_HEIGHT, 1.5, 6), 120);
+        assert_eq!(widget_window_size(EXPANDED_LOGICAL_WIDTH, 1.5, 6), 504);
+        assert_eq!(widget_window_size(EXPANDED_LOGICAL_HEIGHT, 1.5, 6), 216);
     }
 
     #[test]
@@ -872,6 +872,7 @@ fn set_widget_locked(
         .preferences
         .lock()
         .map_err(|_| "settings unavailable".to_string())? = next.clone();
+    let _ = app.emit_to("widget", "preferences-changed", next.clone());
     Ok(next)
 }
 
@@ -908,13 +909,31 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     let show = MenuItem::with_id(app, "show", "Show / Hide", true, None::<&str>)?;
     let refresh = MenuItem::with_id(app, "refresh", "Refresh now", true, None::<&str>)?;
     let update = MenuItem::with_id(app, "update", "Check for updates", true, None::<&str>)?;
-    let unlock = MenuItem::with_id(app, "unlock", "Unlock widget", true, None::<&str>)?;
-    let pin = MenuItem::with_id(app, "pin", "Pin / Unpin Codex", true, None::<&str>)?;
     let language = MenuItem::with_id(
         app,
         "language",
         "Switch Language / 切换语言",
         true,
+        None::<&str>,
+    )?;
+    let initial_preferences = app
+        .try_state::<AppState>()
+        .and_then(|state| state.preferences.lock().ok().map(|prefs| prefs.clone()))
+        .unwrap_or_default();
+    let always_on_top = CheckMenuItem::with_id(
+        app,
+        "always-on-top",
+        "Always on top",
+        true,
+        initial_preferences.always_on_top,
+        None::<&str>,
+    )?;
+    let click_through = CheckMenuItem::with_id(
+        app,
+        "click-through",
+        "Mouse click-through",
+        true,
+        initial_preferences.locked,
         None::<&str>,
     )?;
     let autostart_enabled = app.autolaunch().is_enabled().unwrap_or(false);
@@ -936,22 +955,16 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         None::<&str>,
     )?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let initial_language = app
-        .try_state::<AppState>()
-        .and_then(|state| {
-            state
-                .preferences
-                .lock()
-                .ok()
-                .map(|prefs| prefs.language.clone())
-        })
-        .unwrap_or_else(|| "zh-CN".into());
+    let separator_actions = PredefinedMenuItem::separator(app)?;
+    let separator_preferences = PredefinedMenuItem::separator(app)?;
+    let separator_quit = PredefinedMenuItem::separator(app)?;
+    let initial_language = initial_preferences.language;
     if initial_language != "en" {
         let _ = show.set_text("显示 / 隐藏");
         let _ = refresh.set_text("立即刷新");
         let _ = update.set_text("检查更新");
-        let _ = unlock.set_text("解锁悬浮窗");
-        let _ = pin.set_text("固定 / 取消固定 Codex");
+        let _ = always_on_top.set_text("始终置顶");
+        let _ = click_through.set_text("鼠标穿透");
         let _ = language.set_text("Switch to English");
         let _ = autostart.set_text("开机启动");
         let _ = quit.set_text("退出");
@@ -962,12 +975,15 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         &[
             &show,
             &refresh,
-            &update,
-            &unlock,
-            &pin,
-            &language,
+            &separator_actions,
+            &always_on_top,
+            &click_through,
             &autostart,
+            &separator_preferences,
+            &update,
+            &language,
             &test_short_window,
+            &separator_quit,
             &quit,
         ],
     )?;
@@ -975,7 +991,17 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     let menu = Menu::with_items(
         app,
         &[
-            &show, &refresh, &update, &unlock, &pin, &language, &autostart, &quit,
+            &show,
+            &refresh,
+            &separator_actions,
+            &always_on_top,
+            &click_through,
+            &autostart,
+            &separator_preferences,
+            &update,
+            &language,
+            &separator_quit,
+            &quit,
         ],
     )?;
     let mut builder = TrayIconBuilder::with_id("main")
@@ -988,8 +1014,8 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     let show_menu = show.clone();
     let refresh_menu = refresh.clone();
     let update_menu = update.clone();
-    let unlock_menu = unlock.clone();
-    let pin_menu = pin.clone();
+    let always_on_top_menu = always_on_top.clone();
+    let click_through_menu = click_through.clone();
     let language_menu = language.clone();
     let quit_menu = quit.clone();
     #[cfg(debug_assertions)]
@@ -1012,8 +1038,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
             "update" => {
                 let _ = app.emit_to("widget", "update-check-requested", ());
             }
-            "debug-short-window" =>
-            {
+            "debug-short-window" => {
                 #[cfg(debug_assertions)]
                 if let Some(state) = app.try_state::<AppState>() {
                     if let Ok(mut enabled) = state.simulate_short_window_for_testing.lock() {
@@ -1023,26 +1048,41 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
                     }
                 }
             }
-            "unlock" => {
-                let _ = apply_lock(app, false);
+            "always-on-top" => {
                 if let Some(state) = app.try_state::<AppState>() {
-                    if let Ok(mut prefs) = state.preferences.lock() {
-                        prefs.locked = false;
-                        let _ = persist_preferences(&state.preferences_path, &prefs);
-                        let _ = app.emit_to("widget", "preferences-changed", prefs.clone());
+                    let previous = state
+                        .preferences
+                        .lock()
+                        .ok()
+                        .map(|prefs| prefs.always_on_top)
+                        .unwrap_or(true);
+                    match set_widget_always_on_top(!previous, app.clone(), state) {
+                        Ok(next) => {
+                            let _ = always_on_top_menu.set_checked(next.always_on_top);
+                        }
+                        Err(error) => {
+                            let _ = always_on_top_menu.set_checked(previous);
+                            eprintln!("always-on-top update failed: {error}");
+                        }
                     }
                 }
             }
-            "pin" => {
+            "click-through" => {
                 if let Some(state) = app.try_state::<AppState>() {
-                    if let Ok(mut prefs) = state.preferences.lock() {
-                        prefs.pinned_provider = if prefs.pinned_provider.is_some() {
-                            None
-                        } else {
-                            Some("codex".into())
-                        };
-                        let _ = persist_preferences(&state.preferences_path, &prefs);
-                        let _ = app.emit_to("widget", "preferences-changed", prefs.clone());
+                    let previous = state
+                        .preferences
+                        .lock()
+                        .ok()
+                        .map(|prefs| prefs.locked)
+                        .unwrap_or(false);
+                    match set_widget_locked(!previous, app.clone(), state) {
+                        Ok(next) => {
+                            let _ = click_through_menu.set_checked(next.locked);
+                        }
+                        Err(error) => {
+                            let _ = click_through_menu.set_checked(previous);
+                            eprintln!("click-through update failed: {error}");
+                        }
                     }
                 }
             }
@@ -1073,15 +1113,15 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
                         } else {
                             "检查更新"
                         });
-                        let _ = unlock_menu.set_text(if english {
-                            "Unlock widget"
+                        let _ = always_on_top_menu.set_text(if english {
+                            "Always on top"
                         } else {
-                            "解锁悬浮窗"
+                            "始终置顶"
                         });
-                        let _ = pin_menu.set_text(if english {
-                            "Pin / Unpin Codex"
+                        let _ = click_through_menu.set_text(if english {
+                            "Mouse click-through"
                         } else {
-                            "固定 / 取消固定 Codex"
+                            "鼠标穿透"
                         });
                         let _ = language_menu.set_text(if english {
                             "切换到中文"
@@ -1110,7 +1150,10 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
                     Ok(()) => {
                         let _ = autostart_menu.set_checked(!enabled);
                     }
-                    Err(_) => eprintln!("autostart update failed"),
+                    Err(_) => {
+                        let _ = autostart_menu.set_checked(enabled);
+                        eprintln!("autostart update failed");
+                    }
                 }
             }
             "quit" => app.exit(0),

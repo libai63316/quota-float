@@ -1,0 +1,138 @@
+html,
+body,
+#root {
+  min-height: 100%;
+  height: auto;
+  overflow: auto;
+  background: #e9edf3;
+}
+
+.design-card-frame {
+  width: 120px;
+  height: 52px;
+  flex: 0 0 auto;
+  transition: width .16s ease, height .16s ease;
+}
+
+.design-card-frame.is-expanded { width: 336px; height: 144px; }
+
+.design-workbench {
+  width: 100vw;
+  max-width: 100vw;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  gap: 26px;
+  padding: clamp(24px, 5vw, 64px);
+  overflow: auto;
+  color: #161b24;
+  background:
+    linear-gradient(rgba(82,97,119,.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(82,97,119,.055) 1px, transparent 1px),
+    #e9edf3;
+  background-size: 32px 32px;
+}
+
+.preview-header {
+  width: 100%;
+  max-width: 860px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 0 auto;
+}
+
+.preview-kicker {
+  color: #536174;
+  font-family: "Cascadia Mono", "Consolas", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+}
+
+.preview-header h1 { margin: 9px 0 8px; color: #111722; font-size: clamp(32px, 5vw, 52px); font-weight: 720; letter-spacing: -.055em; line-height: 1; }
+.preview-header p { max-width: 560px; margin: 0; color: #596577; font-size: 15px; line-height: 1.65; }
+.preview-ready { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; padding: 8px 11px; border: 1px solid #cbd3df; border-radius: 999px; color: #465365; background: rgba(255,255,255,.55); font-size: 12px; }
+.preview-ready i { width: 7px; height: 7px; border-radius: 50%; background: #3ba97d; box-shadow: 0 0 0 4px rgba(59,169,125,.12); }
+
+.preview-stage {
+  width: 100%;
+  max-width: 860px;
+  min-width: 0;
+  min-height: 360px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 28px;
+  margin: 0 auto;
+  padding: 32px;
+  border: 1px solid rgba(111,126,148,.2);
+  border-radius: 28px;
+  background: rgba(247,249,252,.72);
+  box-shadow: 0 22px 60px rgba(61,74,94,.12);
+  backdrop-filter: blur(10px);
+}
+
+.design-preview-switch {
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid #d0d7e2;
+  border-radius: 15px;
+  background: rgba(255,255,255,.76);
+}
+
+.design-preview-switch button {
+  min-height: 42px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 10px;
+  color: #5c6879;
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.design-preview-switch button:hover { color: #1a2230; background: #e9edf3; }
+.design-preview-switch button.is-active { color: #f6f8fb; background: #151923; }
+.design-preview-switch button:focus-visible { outline: 2px solid #3459a7; outline-offset: 2px; }
+.preview-hint { margin: -9px 0 0; color: #738094; font-size: 12px; }
+
+.screenshot-stage {
+  width: 100vw;
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  gap: 34px;
+  padding: 44px;
+  overflow: auto;
+  color: #111722;
+  background:
+    radial-gradient(500px 220px at 50% 45%, rgba(139,170,255,.12), transparent 70%),
+    #e9edf3;
+}
+
+.screenshot-heading { display: grid; justify-items: center; gap: 8px; }
+.screenshot-heading span { color: #647187; font-family: "Cascadia Mono", "Consolas", monospace; font-size: 11px; font-weight: 700; letter-spacing: .18em; }
+.screenshot-heading strong { font-size: 27px; letter-spacing: -.035em; }
+.screenshot-cards { display: grid; grid-template-columns: repeat(3, 336px); gap: 24px; }
+
+@media (max-width: 620px) {
+  .design-workbench { gap: 22px; padding: 22px 16px; }
+  .preview-header { width: calc(100vw - 32px); max-width: calc(100vw - 32px); align-items: flex-start; flex-direction: column; gap: 14px; }
+  .preview-header h1 { font-size: 36px; }
+  .preview-stage { width: calc(100vw - 32px); max-width: calc(100vw - 32px); min-height: 410px; padding: 24px 14px; border-radius: 22px; }
+  .design-preview-switch { width: calc(100vw - 60px); max-width: calc(100vw - 60px); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .design-preview-switch button { min-width: 0; padding-inline: 8px; }
+  .screenshot-cards { grid-template-columns: 336px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .design-card-frame { transition: none; }
+}

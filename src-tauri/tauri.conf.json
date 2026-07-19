@@ -19,8 +19,8 @@
         "height": 52,
         "minWidth": 120,
         "minHeight": 52,
-        "maxWidth": 232,
-        "maxHeight": 80,
+        "maxWidth": 336,
+        "maxHeight": 144,
         "resizable": false,
         "decorations": false,
         "transparent": true,
@@ -41,6 +41,9 @@
     "shortDescription": "Codex quota at a glance",
     "longDescription": "A lightweight floating desktop card for Codex usage limits.",
     "copyright": "Copyright Quota Float contributors",
+    "windows": {
+      "nsis": { "installerHooks": "windows/installer-hooks.nsh" }
+    },
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
   },
   "plugins": {

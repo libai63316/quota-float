@@ -65,5 +65,10 @@ export async function checkForAppUpdate(
   } catch {
     if (!manual) return;
     setStatus(messages.failed);
+    try {
+      await openReleasePage();
+    } catch {
+      // The visible failure message remains the fallback when the system cannot open a browser.
+    }
   }
 }

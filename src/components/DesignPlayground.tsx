@@ -15,7 +15,7 @@ const preview: ProviderSnapshot = {
   message: null,
 };
 
-const preferences: WidgetPreferences = { locked: false, alwaysOnTop: true, stayExpanded: true, pinnedProvider: "codex", autoRotateSeconds: 12, language: "zh-CN" };
+const preferences: WidgetPreferences = { locked: false, alwaysOnTop: true, stayExpanded: false, pinnedProvider: "codex", autoRotateSeconds: 12, language: "zh-CN" };
 const noop = () => undefined;
 type PreviewMode = 74 | 35 | 8 | "weekly" | "unavailable" | "stale" | "signed_out";
 
@@ -42,8 +42,22 @@ function makePreview(mode: PreviewMode): ProviderSnapshot {
   };
 }
 
-function Preview({ mode }: { mode: PreviewMode }) {
-  return <div className="design-card-frame"><QuotaCard snapshot={makePreview(mode)} preferences={preferences} onDrag={noop} onHover={noop} isConsuming={mode === 35} /></div>;
+function Preview({ mode, defaultExpanded = false }: { mode: PreviewMode; defaultExpanded?: boolean }) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  return (
+    <div className={`design-card-frame${expanded ? " is-expanded" : ""}`}>
+      <QuotaCard
+        snapshot={makePreview(mode)}
+        preferences={preferences}
+        expanded={expanded}
+        draggable={false}
+        onDrag={noop}
+        onExpandedChange={setExpanded}
+        onRefresh={noop}
+        isConsuming={mode === 35}
+      />
+    </div>
+  );
 }
 
 export function DesignPlayground() {
@@ -57,15 +71,31 @@ export function DesignPlayground() {
   });
 
   if (params.get("shot") === "states") {
-    return <div className="screenshot-stage screenshot-stage--states">{[74, 35, 8].map((value) => <Preview key={value} mode={value as PreviewMode} />)}</div>;
+    return (
+      <div className="screenshot-stage screenshot-stage--states">
+        <div className="screenshot-heading"><span>QUOTA FLOAT</span><strong>每一格余量，都算数。</strong></div>
+        <div className="screenshot-cards">{[74, 35, 8].map((value) => <Preview key={value} mode={value as PreviewMode} defaultExpanded />)}</div>
+      </div>
+    );
   }
 
   return (
     <main className="design-workbench">
-      <nav className="design-preview-switch" aria-label="额度状态预览">
-        {modes.map((item) => <button key={item.value} className={mode === item.value ? "is-active" : ""} onClick={() => setMode(item.value)}>{item.label}</button>)}
-      </nav>
-      <Preview mode={mode} />
+      <header className="preview-header">
+        <div>
+          <span className="preview-kicker">QUOTA FLOAT · BROWSER PREVIEW</span>
+          <h1>额度，一眼就够。</h1>
+          <p>点击卡片展开详情，再点一次收起。这里使用模拟数据，不读取你的账户。</p>
+        </div>
+        <span className="preview-ready"><i /> 可交互预览</span>
+      </header>
+      <section className="preview-stage" aria-label="Quota Float 交互预览">
+        <nav className="design-preview-switch" aria-label="额度状态预览">
+          {modes.map((item) => <button type="button" key={item.value} className={mode === item.value ? "is-active" : ""} onClick={() => setMode(item.value)}>{item.label}</button>)}
+        </nav>
+        <Preview key={String(mode)} mode={mode} />
+        <p className="preview-hint">点击切换详情 · 拖动仅在桌面应用中生效</p>
+      </section>
     </main>
   );
 }

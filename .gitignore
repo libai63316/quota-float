@@ -1,6 +1,7 @@
 /node_modules
 /dist
 /outputs
+/artifacts
 /release
 /src-tauri/target
 /.codex-target*/
